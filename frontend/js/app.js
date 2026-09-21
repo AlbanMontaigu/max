@@ -209,6 +209,11 @@ function renderBanners() {
   if (DATA.plan && DATA.plan.limited) {
     box.appendChild(el('div', 'banner',
       `Forfait saturé — la fenêtre se rouvre à ${clock(DATA.plan.resets_at)}.`));
+  } else if (DATA.plan && DATA.plan.utilization >= 80) {
+    // Même seuil que l'alerte Telegram du watchdog : la page et l'alerte
+    // doivent dire la même chose, sinon l'une des deux fait douter de l'autre.
+    box.appendChild(el('div', 'banner warn',
+      `Fenêtre du forfait à ${Math.round(DATA.plan.utilization)} % — elle se rouvre à ${clock(DATA.plan.resets_at)}.`));
   }
   const noisy = DATA.variants.filter(v => v.journal && (v.journal.errors || v.journal.dropped));
   if (noisy.length) {
@@ -234,6 +239,9 @@ function renderPlan() {
     box.appendChild(card);
     return;
   }
+  // Le payload porte un POURCENTAGE : l'API, elle, donne une fraction
+  // (0,79 = 79 %) et la conversion se fait une seule fois, dans l'export.
+  // Refaire le calcul ici créerait une seconde unité à tenir.
   const pct = (p.utilization === null || p.utilization === undefined) ? null : Math.round(p.utilization);
   const WINDOWS = { five_hour: 'de 5 heures', seven_day: 'de 7 jours' };
   const win = WINDOWS[p.type] || null;
