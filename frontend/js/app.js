@@ -27,6 +27,17 @@ const el = (tag, cls, txt) => {
 let DATA = null;
 let VIEW = (location.hash.replace('#', '') === 'week') ? 'week' : 'day';
 
+// L'onglet ouvert est memorise, pas dans le hash : le hash reste reserve a la
+// fenetre (#day/#week), partageable. localStorage leve en navigation privee
+// sur Safari — un onglet non memorise est un desagrement, pas une panne.
+const TAB_KEY = 'max.tab';
+const TABS = ['overview', 'variants', 'usage'];
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* rien a faire */ } },
+};
+let TAB = TABS.includes(store.get(TAB_KEY)) ? store.get(TAB_KEY) : 'overview';
+
 /* --- Formatage ----------------------------------------------------------- */
 
 const NF = new Intl.NumberFormat('fr-FR');
@@ -378,6 +389,37 @@ function renderVariants() {
   DATA.variants.forEach(v => box.appendChild(variantCard(v)));
 }
 
+function switchTab(next) {
+  if (!TABS.includes(next) || next === TAB) return;
+  TAB = next;
+  store.set(TAB_KEY, TAB);
+  document.body.dataset.tab = TAB;
+  for (const b of $('tabs').querySelectorAll('button')) {
+    b.setAttribute('aria-selected', String(b.dataset.tab === TAB));
+  }
+}
+
+function renderStrip() {
+  const box = $('strip');
+  box.innerHTML = '';
+  const wrap = el('div', 'strip');
+  DATA.variants.forEach(v => {
+    const chip = el('button', 'chip' + (v.up ? '' : ' down'));
+    chip.type = 'button';
+    chip.appendChild(el('span', 'dot' + (v.up ? '' : ' down')));
+    chip.appendChild(el('b', null, v.label));
+    chip.appendChild(el('span', null,
+      v.up
+        ? (v.turn_duration && v.turn_duration.p50 !== undefined
+           ? `${duration(v.turn_duration.p50)} par tour`
+           : 'en ligne')
+        : 'sans réponse'));
+    chip.addEventListener('click', () => switchTab('variants'));
+    wrap.appendChild(chip);
+  });
+  box.appendChild(wrap);
+}
+
 function renderConso() {
   const box = $('conso');
   box.innerHTML = '';
@@ -488,6 +530,7 @@ function renderFooter() {
 function renderAll() {
   renderHeader();
   renderBanners();
+  renderStrip();
   renderPlan();
   renderVariants();
   renderConso();
@@ -544,6 +587,17 @@ $('view').addEventListener('click', (e) => {
 
 [...$('view').querySelectorAll('button')].forEach(x =>
   x.setAttribute('aria-pressed', String(x.dataset.view === VIEW)));
+
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]');
+  if (!b) return;
+  switchTab(b.dataset.tab);
+});
+
+document.body.dataset.tab = TAB;
+for (const b of $('tabs').querySelectorAll('button')) {
+  b.setAttribute('aria-selected', String(b.dataset.tab === TAB));
+}
 
 load();
 setInterval(load, REFRESH_MS);

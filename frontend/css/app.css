@@ -73,6 +73,37 @@ body {
 }
 .seg button[aria-pressed="true"] { background: var(--cool); color: #fff; font-weight: 600; }
 
+/* Navigation PRINCIPALE (aperçu / variantes / consommation) : la page ne
+   pousse plus tout d'un bloc, chaque onglet ne montre que sa section (voir
+   body[data-tab] plus bas). Accolée sous l'en-tête, dans le même bandeau
+   collant, pour que changer d'onglet sur une longue page ne demande jamais de
+   remonter. */
+.tabs {
+  display: flex; gap: .3rem;
+  padding: .4rem .75rem;
+  background: #d8e4f5;
+  overflow-x: auto;
+}
+.tabs button {
+  appearance: none; border: 0; background: transparent; color: #3a5578;
+  font: inherit; font-size: .84rem; font-weight: 560; padding: .5rem .75rem;
+  cursor: pointer; white-space: nowrap; border-radius: 8px;
+}
+.tabs button[aria-selected="true"] {
+  color: var(--ink); font-weight: 660;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(22, 32, 46, .12);
+}
+
+/* Chaque section n'appartient qu'à un onglet. #banners reste visible partout :
+   une alerte ne doit pas se cacher derrière un onglet qu'on n'a pas ouvert. */
+body:not([data-tab="overview"]) #strip,
+body:not([data-tab="overview"]) #plan,
+body:not([data-tab="variants"]) #variants,
+body:not([data-tab="usage"]) #conso {
+  display: none;
+}
+
 .banner {
   background: #fdecea; border: 1px solid #f3c4bd; color: #a5281a;
   border-radius: 12px; padding: .6rem .8rem; margin-bottom: .75rem; font-size: .88rem;
@@ -92,6 +123,21 @@ body {
 .gauge.hot > i { background: var(--warn); }
 .gauge.full > i { background: var(--alert); }
 .plan .legend { display: flex; justify-content: space-between; font-size: .76rem; color: var(--ink-dim); margin-top: .3rem; }
+
+/* --- Bandeau d'aperçu ------------------------------------------------------ */
+
+/* Un chip par variante, pas une carte : l'onglet Aperçu doit se lire d'un
+   regard, le détail (file, conso, anomalies…) vit dans l'onglet Variantes. */
+.strip { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.chip {
+  appearance: none; font: inherit; cursor: pointer; text-align: left;
+  display: flex; align-items: center; gap: .4rem;
+  background: var(--card); border: 1px solid var(--edge); border-radius: 999px;
+  padding: .35rem .75rem .35rem .55rem; font-size: .82rem; color: var(--ink);
+}
+.chip.down { border-color: #f3c4bd; background: #fffaf9; }
+.chip b { font-weight: 620; }
+.chip span { color: var(--ink-dim); }
 
 /* --- Cartes de variante --------------------------------------------------- */
 
