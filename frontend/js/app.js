@@ -82,6 +82,11 @@ function windowHours() {
   return VIEW === 'day' ? Math.min(24, hours.length) : hours.length;
 }
 
+function hoursArr() {
+  const n = windowHours();
+  return DATA.series.hours.slice(DATA.series.hours.length - n);
+}
+
 function sliceOf(variantId) {
   const n = windowHours();
   const arr = DATA.series.by_variant[variantId] || [];
@@ -177,6 +182,96 @@ function sparkline(rows) {
     if (bh > 0) s.appendChild(rect(i * bw + bw * 0.15, h - bh, bw * 0.7, bh, '--cool'));
   });
   return s;
+}
+
+/* --- Interactivite --------------------------------------------------------
+
+   Chaque dessin porte ses propres lignes (rows) et l'heure de chacune
+   (hours), attachees en proprietes JS plutot qu'en dataset : ce sont des
+   objets, pas des chaines. Un seul ecouteur delegue au document lit ces deux
+   proprietes pour retrouver, sous le curseur, la barre survolee — pas besoin
+   d'un ecouteur par graphe, ni de les reposer a chaque re-rendu. */
+
+function tagChart(s, rows, hours, track) {
+  s.dataset.track = track;
+  s._rows = rows;
+  s._hours = hours;
+  return s;
+}
+
+function fmtHourFull(iso) {
+  return new Date(iso).toLocaleString('fr-FR',
+    VIEW === 'day'
+      ? { weekday: 'short', hour: '2-digit', minute: '2-digit' }
+      : { weekday: 'long', day: '2-digit', month: 'short', hour: '2-digit' });
+}
+
+function tipForTrack(track, r) {
+  if (track === 'out') return `${tokens(r.out)} produits par le modèle`;
+  if (track === 'spark') {
+    return r.turns
+      ? `${NF.format(r.turns)} tour${r.turns > 1 ? 's' : ''} · ${tokens(r.out)} produits`
+      : `aucun tour`;
+  }
+  const total = r.in + r.cache_read + r.cache_creation + r.out;
+  return total
+    ? `${tokens(total)} au total<br><span class="dim">${tokens(r.out)} produits · `
+      + `${tokens(r.in)} envoyés neufs · ${tokens(r.cache_read + r.cache_creation)} depuis le cache</span>`
+    : `aucun tour`;
+}
+
+function showTip(x, y, html) {
+  const tip = $('tip');
+  tip.innerHTML = html;
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, x - w / 2)) + 'px';
+  tip.style.top = Math.max(8, y - h - 12) + 'px';
+}
+
+function hideTip() { $('tip').hidden = true; }
+
+function bindChartTip() {
+  const point = (ev) => {
+    const s = ev.target.closest('svg[data-track]');
+    if (!s || !s._rows || !s._rows.length) { hideTip(); return; }
+    const box = s.getBoundingClientRect();
+    const n = s._rows.length;
+    const i = Math.max(0, Math.min(n - 1, Math.floor(((ev.clientX - box.left) / box.width) * n)));
+    const hourLabel = (s._hours && s._hours[i]) ? fmtHourFull(s._hours[i]) : '';
+    showTip(ev.clientX, box.top, `<b>${hourLabel}</b><br>${tipForTrack(s.dataset.track, s._rows[i])}`);
+  };
+  document.addEventListener('pointermove', point);
+  document.addEventListener('pointerdown', point);
+  document.addEventListener('pointerleave', hideTip);
+}
+
+function axisTicks(hours) {
+  /* 6 reperes repartis a intervalle EGAL entre le premier et le dernier
+     index (pas un pas fixe + une queue rajoutee) : un pas fixe laisse un
+     dernier repere trop proche de l'avant-dernier des que n-1 n'est pas un
+     multiple du pas, et les deux libelles se chevauchent. */
+  const n = hours.length;
+  if (!n) return [];
+  const count = Math.min(n, 6);
+  const idx = [...new Set(Array.from({ length: count },
+    (_, i) => count > 1 ? Math.round(i * (n - 1) / (count - 1)) : 0))];
+  const fmt = (iso) => new Date(iso).toLocaleString('fr-FR',
+    VIEW === 'day' ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', hour: '2-digit' });
+  return idx.map(i => ({ frac: n > 1 ? i / (n - 1) : 0, label: fmt(hours[i]) }));
+}
+
+function renderAxis(hours) {
+  // Positionnee en fraction de largeur, pas en space-between : chaque repere
+  // tombe exactement sous l'heure qu'il nomme, pas a une position moyenne qui
+  // gliserait des qu'un des deux graphes a un nombre de barres different.
+  const axis = el('div', 'axis');
+  axisTicks(hours).forEach((t) => {
+    const sp = el('span', null, t.label);
+    sp.style.left = (t.frac * 100) + '%';
+    axis.appendChild(sp);
+  });
+  return axis;
 }
 
 /* --- Rendu --------------------------------------------------------------- */
@@ -338,7 +433,7 @@ function variantCard(v) {
     }
     if (t.turns > 0) {
       const sp = el('div', 'spark');
-      sp.appendChild(sparkline(rows));
+      sp.appendChild(tagChart(sparkline(rows), rows, hoursArr(), 'spark'));
       card.appendChild(sp);
     } else {
       card.appendChild(el('p', 'quiet-dim', 'Aucun tour sur la fenêtre affichée.'));
@@ -437,23 +532,19 @@ function renderConso() {
   // legende d'echelles se lisent comme un affichage casse, pas comme le calme.
   if (!t.turns) { box.appendChild(card); return; }
 
+  const hours = hoursArr();
+
   card.appendChild(el('div', 'eyebrow', 'Produits par le modèle, par heure'));
   const out = el('div', 'chart chart-out');
-  out.appendChild(barsOf(rows, 'out', '--tok-out', 78));
+  out.appendChild(tagChart(barsOf(rows, 'out', '--tok-out', 78), rows, hours, 'out'));
   card.appendChild(out);
+  card.appendChild(renderAxis(hours));
 
   card.appendChild(el('div', 'eyebrow', 'Volume total reçu, cache compris'));
   const chart = el('div', 'chart');
-  chart.appendChild(stackedChart(rows));
+  chart.appendChild(tagChart(stackedChart(rows), rows, hours, 'stack'));
   card.appendChild(chart);
-
-  const hours = DATA.series.hours.slice(DATA.series.hours.length - rows.length);
-  const axis = el('div', 'axis');
-  const fmt = (iso) => new Date(iso).toLocaleString('fr-FR',
-    VIEW === 'day' ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', hour: '2-digit' });
-  axis.appendChild(el('span', null, hours.length ? fmt(hours[0]) : ''));
-  axis.appendChild(el('span', null, hours.length ? fmt(hours[hours.length - 1]) : ''));
-  card.appendChild(axis);
+  card.appendChild(renderAxis(hours));
 
   const peak = Math.max(...rows.map(r => r.out), 0);
   const cache = t.cache_read + t.cache_creation;
@@ -599,5 +690,6 @@ for (const b of $('tabs').querySelectorAll('button')) {
   b.setAttribute('aria-selected', String(b.dataset.tab === TAB));
 }
 
+bindChartTip();
 load();
 setInterval(load, REFRESH_MS);

@@ -189,7 +189,17 @@ body:not([data-tab="usage"]) #conso {
   padding: .7rem .85rem; margin-bottom: .75rem;
 }
 .chart svg { width: 100%; height: 120px; display: block; }
-.axis { display: flex; justify-content: space-between; font-size: .72rem; color: var(--ink-dim); margin-top: .2rem; }
+.chart svg rect, .spark svg rect { cursor: pointer; }
+.chart svg rect:hover, .spark svg rect:hover { opacity: .7; }
+
+/* Reperes positionnes en fraction de largeur (voir renderAxis dans le JS),
+   pas en space-between : chaque libelle doit tomber sous l'heure qu'il
+   nomme. Le premier et le dernier s'alignent sur leur bord plutot que sur
+   leur centre, sinon ils debordent du cadre. */
+.axis { position: relative; height: 1rem; margin-top: .3rem; font-size: .72rem; color: var(--ink-dim); }
+.axis span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.axis span:first-child { transform: translateX(0); }
+.axis span:last-child { transform: translateX(-100%); }
 .keys { display: flex; flex-wrap: wrap; gap: .1rem .9rem; font-size: .78rem; color: var(--ink-dim); margin-top: .4rem; }
 .keys i { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem; }
 
@@ -215,3 +225,18 @@ table.t th { font-weight: 660; color: var(--ink-dim); font-size: .74rem; text-tr
 /* Une troncature n est pas une erreur : c est un plafond atteint. Ambre et
    non rouge, pour que le rouge garde son sens sur cette page. */
 .anom.soft { background: #fdf4e7; border-color: #f0d9b0; color: #8a5200; }
+
+/* --- Bulle de survol -------------------------------------------------------
+
+   Un seul element partage par tous les graphes (voir bindChartTip dans le
+   JS) : positionnee au doigt/curseur, jamais cliquable elle-meme
+   (pointer-events: none) pour ne pas voler le survol de la barre en dessous. */
+.tip {
+  position: fixed; z-index: 20; pointer-events: none;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--ink);
+  padding: .4rem .55rem; font-size: .78rem; line-height: 1.4; white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(22, 32, 46, .18);
+}
+.tip b { font-weight: 620; }
+.tip .dim { color: var(--ink-dim); }
