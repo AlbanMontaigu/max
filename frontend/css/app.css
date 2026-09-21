@@ -165,3 +165,7 @@ table.t th { font-weight: 660; color: var(--ink-dim); font-size: .74rem; text-tr
 /* « Rien ne s est passe » se dit, mais ne se crie pas : c est un fait, pas
    une bonne nouvelle comme « aucune anomalie ». */
 .quiet-dim { font-size: .78rem; color: var(--ink-dim); margin: .3rem 0 0; }
+
+/* Une troncature n est pas une erreur : c est un plafond atteint. Ambre et
+   non rouge, pour que le rouge garde son sens sur cette page. */
+.anom.soft { background: #fdf4e7; border-color: #f0d9b0; color: #8a5200; }

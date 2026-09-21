@@ -306,6 +306,14 @@ function variantCard(v) {
       kv2.appendChild(d);
     });
     card.appendChild(kv2);
+    const cut = (v.kinds || {}).max_tokens || 0;
+    if (cut) {
+      const box = el('div', 'anoms');
+      box.appendChild(el('span', 'anom soft',
+        `${NF.format(cut)} ${cut > 1 ? 'tours tronqués' : 'tour tronqué'} sur ${
+          VIEW === 'day' ? '24 h' : DATA.window_days + ' j'}`));
+      card.appendChild(box);
+    }
     if (t.turns > 0) {
       const sp = el('div', 'spark');
       sp.appendChild(sparkline(rows));
@@ -347,7 +355,7 @@ function variantCard(v) {
     const box = el('div', 'anoms');
     anoms.forEach(a => box.appendChild(el('span', 'anom', `${a.label} : ${NF.format(a.count)}`)));
     card.appendChild(box);
-  } else {
+  } else if (!((v.kinds || {}).max_tokens)) {
     card.appendChild(el('p', 'quiet', 'Aucune anomalie.'));
   }
   return card;
@@ -450,6 +458,7 @@ function renderHelp() {
   p("Chaque carte est une gateway : un service local qui parle à Claude sous le forfait Max au lieu de l'API facturée. Le point vert dit qu'elle répond, rien de plus.");
   p("Deux horloges, à ne pas confondre. « Aujourd'hui » et « sur 7 jours » viennent du journal des tours, qui survit aux redémarrages. Les compteurs « depuis le démarrage » repartent de zéro à chaque redémarrage de la variante — d'où l'âge affiché à côté.");
   p("Les tokens du cache sont presque toujours l'essentiel du volume : c'est du contexte relu, bien moins cher que ce que le modèle produit. Les trois natures ont chacune leur couleur pour cette raison.");
+  p("« Tour tronqué » : le modèle a été coupé au plafond de jetons demandé par le client. Le tour est facturé entier et la réponse arrive incomplète — c'est un réglage à revoir côté appelant, pas une panne de la gateway.");
   p("La page est en lecture seule. Elle ne commande rien et rien n'entre depuis ici : le mac pousse son état, le conteneur le sert.");
 }
 
