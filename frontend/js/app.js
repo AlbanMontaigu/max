@@ -314,7 +314,10 @@ function variantCard(v) {
       kv2.appendChild(d);
     });
     card.appendChild(kv2);
-    const cut = (v.kinds || {}).max_tokens || 0;
+    // Le compte suit la fenetre affichee : le payload en porte un par
+    // fenetre, precisement pour que la pastille ne puisse pas annoncer une
+    // duree et compter l'autre.
+    const cut = ((v.kinds || {})[VIEW === 'day' ? 'day' : 'window'] || {}).max_tokens || 0;
     if (cut) {
       const box = el('div', 'anoms');
       box.appendChild(el('span', 'anom soft',
@@ -363,7 +366,7 @@ function variantCard(v) {
     const box = el('div', 'anoms');
     anoms.forEach(a => box.appendChild(el('span', 'anom', `${a.label} : ${NF.format(a.count)}`)));
     card.appendChild(box);
-  } else if (!((v.kinds || {}).max_tokens)) {
+  } else if (!(((v.kinds || {})[VIEW === 'day' ? 'day' : 'window'] || {}).max_tokens)) {
     card.appendChild(el('p', 'quiet', 'Aucune anomalie.'));
   }
   return card;
