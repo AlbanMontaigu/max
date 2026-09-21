@@ -1,0 +1,163 @@
+/* Meme parti que le dashboard maison, et pour les memes raisons : mobile
+   d'abord, theme clair UNIQUEMENT. Maintenir deux palettes coherentes
+   doublerait chaque evolution, et ce qui casse a une bascule de theme ne se
+   voit pas en relisant du CSS.
+
+   Toute la couleur vit ici, y compris celle que le JS peint dans les SVG :
+   un dessin genere ne doit pas porter sa propre palette, sinon un restylage
+   se fait a deux endroits et l'un des deux garde l'ancien theme en silence. */
+:root {
+  --bg: #f2f5f9;
+  --card: #ffffff;
+  --card-2: #e7ecf3;
+  --ink: #16202e;
+  --ink-dim: #5a6b80;
+  --line: #d3dbe6;
+  --edge: #dde4ee;
+
+  /* Series, toutes a 4,5:1 ou mieux sur --card. */
+  --ok: #16794a;
+  --alert: #c0392b;
+  --warn: #b45309;
+  --cool: #1668c9;
+  --neutral: #7b8899;
+
+  /* Les trois natures de tokens ont chacune leur couleur, jamais trois gris :
+     c'est exactement la distinction que la courbe doit porter. */
+  --tok-out: #c05600;     /* produits par le modele — ce qui coute le plus */
+  --tok-in: #1668c9;      /* envoyes neufs */
+  --tok-cache: #0d7f78;   /* relus depuis le cache — l'essentiel du volume */
+  --grid: #e9eef5;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 0 .75rem 2.5rem;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* En-tete collant : « comment vont les gateways » doit se lire ici, pas au
+   terme d'un parcours des six cartes. */
+.topwrap {
+  margin: 0 -.75rem .75rem;
+  position: sticky; top: 0; z-index: 5;
+  box-shadow: 0 1px 3px rgba(22, 32, 46, .07);
+}
+.top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem 1rem; flex-wrap: wrap;
+  padding: .85rem 1rem;
+  background: linear-gradient(180deg, #e8f0fb, #f4f8fd);
+}
+.top-id { min-width: 0; }
+.top h1 { margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.synth { margin: .15rem 0 0; font-size: .88rem; color: var(--ink-dim); }
+.synth b { color: var(--ink); font-weight: 620; }
+.top-meta { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+
+.pill {
+  font-size: .78rem; padding: .25rem .6rem; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--edge);
+  color: var(--ink-dim); white-space: nowrap; max-width: 100%;
+}
+.pill.stale { background: #fdecea; border-color: #f3c4bd; color: #a5281a; font-weight: 560; }
+.pill.fresh { background: #e7f4ed; border-color: #b9dfcb; color: var(--ok); }
+
+.seg { display: inline-flex; border: 1px solid var(--edge); border-radius: 999px; overflow: hidden; background: var(--card); }
+.seg button {
+  font: inherit; font-size: .78rem; padding: .25rem .7rem; border: 0;
+  background: transparent; color: var(--ink-dim); cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--cool); color: #fff; font-weight: 600; }
+
+.banner {
+  background: #fdecea; border: 1px solid #f3c4bd; color: #a5281a;
+  border-radius: 12px; padding: .6rem .8rem; margin-bottom: .75rem; font-size: .88rem;
+}
+.banner.warn { background: #fdf4e7; border-color: #f0d9b0; color: #8a5200; }
+
+/* --- Forfait ------------------------------------------------------------- */
+
+.plan {
+  background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
+  padding: .7rem .85rem; margin-bottom: .75rem;
+}
+.plan h2, .conso h2 { margin: 0 0 .35rem; font-size: .88rem; font-weight: 660; }
+.plan .sub { font-size: .8rem; color: var(--ink-dim); margin: 0 0 .5rem; }
+.gauge { height: 12px; border-radius: 999px; background: var(--card-2); overflow: hidden; }
+.gauge > i { display: block; height: 100%; background: var(--cool); }
+.gauge.hot > i { background: var(--warn); }
+.gauge.full > i { background: var(--alert); }
+.plan .legend { display: flex; justify-content: space-between; font-size: .76rem; color: var(--ink-dim); margin-top: .3rem; }
+
+/* --- Cartes de variante --------------------------------------------------- */
+
+/* minmax(0,1fr) et pas 1fr : une piste de grille vaut min-width:auto par
+   defaut, et les SVG (viewBox large) imposeraient leur largeur intrinseque a
+   la carte, poussant la page en debordement horizontal sur telephone. */
+.cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; margin-bottom: .75rem; }
+@media (min-width: 720px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.card {
+  background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
+  padding: .7rem .85rem; min-width: 0;
+}
+.card.down { border-color: #f3c4bd; background: #fffaf9; }
+.card.foreign { background: #fbfaff; }
+.chead { display: flex; align-items: baseline; gap: .5rem; }
+.chead h3 { margin: 0; font-size: 1rem; font-weight: 660; }
+.dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--ok); flex: 0 0 auto; align-self: center; }
+.dot.down { background: var(--alert); }
+.crole { margin: .2rem 0 .5rem; font-size: .8rem; color: var(--ink-dim); }
+.tag {
+  font-size: .68rem; font-weight: 660; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--ink-dim); border: 1px solid var(--edge); border-radius: 999px; padding: .05rem .4rem;
+}
+
+.kv { display: flex; flex-wrap: wrap; gap: .1rem 1rem; font-size: .82rem; }
+.kv div { white-space: nowrap; }
+.kv b { font-weight: 620; }
+.kv span { color: var(--ink-dim); }
+
+.eyebrow {
+  font-size: .68rem; font-weight: 660; color: var(--ink-dim);
+  text-transform: uppercase; letter-spacing: .03em; margin: .55rem 0 .15rem;
+}
+.spark svg { width: 100%; height: 34px; display: block; }
+.anoms { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+.anom {
+  font-size: .76rem; padding: .1rem .5rem; border-radius: 999px;
+  background: #fdecea; border: 1px solid #f3c4bd; color: #a5281a;
+}
+.quiet { font-size: .78rem; color: var(--ok); }
+.err { font-size: .8rem; color: #a5281a; }
+
+/* --- Conso ---------------------------------------------------------------- */
+
+.conso {
+  background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
+  padding: .7rem .85rem; margin-bottom: .75rem;
+}
+.chart svg { width: 100%; height: 120px; display: block; }
+.axis { display: flex; justify-content: space-between; font-size: .72rem; color: var(--ink-dim); margin-top: .2rem; }
+.keys { display: flex; flex-wrap: wrap; gap: .1rem .9rem; font-size: .78rem; color: var(--ink-dim); margin-top: .4rem; }
+.keys i { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem; }
+
+table.t { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .4rem; }
+table.t th, table.t td { text-align: right; padding: .25rem .3rem; border-bottom: 1px solid var(--grid); }
+table.t th:first-child, table.t td:first-child { text-align: left; }
+table.t th { font-weight: 660; color: var(--ink-dim); font-size: .74rem; text-transform: uppercase; letter-spacing: .03em; }
+
+.help { margin: .25rem 0 .75rem; font-size: .85rem; color: var(--ink-dim); }
+.help summary { cursor: pointer; }
+.help p { margin: .5rem 0; }
+.foot { font-size: .76rem; color: var(--ink-dim); text-align: center; }
+
+/* Le dessin des tokens produits est plus bas que celui du volume : il porte
+   une grandeur plus petite, lui donner la meme hauteur en ferait le sujet
+   principal du bloc alors qu ils se lisent ensemble. */
+.chart.chart-out svg { height: 78px; }
