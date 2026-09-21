@@ -161,3 +161,7 @@ table.t th { font-weight: 660; color: var(--ink-dim); font-size: .74rem; text-tr
    une grandeur plus petite, lui donner la meme hauteur en ferait le sujet
    principal du bloc alors qu ils se lisent ensemble. */
 .chart.chart-out svg { height: 78px; }
+
+/* « Rien ne s est passe » se dit, mais ne se crie pas : c est un fait, pas
+   une bonne nouvelle comme « aucune anomalie ». */
+.quiet-dim { font-size: .78rem; color: var(--ink-dim); margin: .3rem 0 0; }

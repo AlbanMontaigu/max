@@ -177,13 +177,9 @@ function renderHeader() {
   const label = VIEW === 'day' ? "sur 24 h" : `sur ${DATA.window_days} j`;
   const synth = $('synth');
   synth.innerHTML = '';
-  const add = (txt, bold) => {
-    const n = bold ? el('b', null, txt) : document.createTextNode(txt);
-    synth.appendChild(bold ? n : n);
-  };
-  add(up === total ? 'Les ' : '', false);
+  const add = (txt, bold) => synth.appendChild(bold ? el('b', null, txt) : document.createTextNode(txt));
   add(`${up}/${total}`, true);
-  add(up === total ? ' variantes en ligne · ' : ' variantes en ligne · ', false);
+  add(' variantes en ligne · ', false);
   add(NF.format(t.turns), true);
   add(` tours ${label} · `, false);
   add(tokens(t.in + t.cache_read + t.cache_creation + t.out), true);
@@ -239,10 +235,12 @@ function renderPlan() {
     return;
   }
   const pct = (p.utilization === null || p.utilization === undefined) ? null : Math.round(p.utilization);
+  const WINDOWS = { five_hour: 'de 5 heures', seven_day: 'de 7 jours' };
+  const win = WINDOWS[p.type] || null;
   card.appendChild(el('p', 'sub',
     pct === null
-      ? `Fenêtre ${p.type || '—'} · consommation non communiquée par la dernière réponse.`
-      : `Fenêtre ${p.type === 'five_hour' ? '5 h' : (p.type || '—')} · ${pct} % consommés, remise à zéro à ${clock(p.resets_at)}.`));
+      ? `Fenêtre ${win || 'en cours'} · la dernière réponse n'a pas dit où en est la consommation.`
+      : `Fenêtre ${win || 'en cours'} · ${pct} % consommés, remise à zéro à ${clock(p.resets_at)}.`));
   if (pct !== null) {
     const g = el('div', 'gauge' + (pct >= 90 ? ' full' : pct >= 70 ? ' hot' : ''));
     const i = el('i');
@@ -308,9 +306,13 @@ function variantCard(v) {
       kv2.appendChild(d);
     });
     card.appendChild(kv2);
-    const sp = el('div', 'spark');
-    sp.appendChild(sparkline(rows));
-    card.appendChild(sp);
+    if (t.turns > 0) {
+      const sp = el('div', 'spark');
+      sp.appendChild(sparkline(rows));
+      card.appendChild(sp);
+    } else {
+      card.appendChild(el('p', 'quiet-dim', 'Aucun tour sur la fenêtre affichée.'));
+    }
   } else {
     card.appendChild(el('div', 'eyebrow', 'Conso'));
     card.appendChild(el('p', 'crole', "Aucune : cette variante n'appelle pas de modèle."));
@@ -365,9 +367,14 @@ function renderConso() {
   const t = windowTotal();
   card.appendChild(el('h2', null,
     VIEW === 'day' ? "Consommation des 24 dernières heures" : `Consommation sur ${DATA.window_days} jours`));
-  card.appendChild(el('p', 'sub',
-    `${NF.format(t.turns)} tours · ${tokens(t.out)} produits · ${tokens(t.in)} envoyés neufs · `
-    + `${tokens(t.cache_read + t.cache_creation)} passés par le cache.`));
+  card.appendChild(el('p', 'sub', t.turns
+    ? `${NF.format(t.turns)} tours · ${tokens(t.out)} produits · ${tokens(t.in)} envoyés neufs · `
+      + `${tokens(t.cache_read + t.cache_creation)} passés par le cache.`
+    : `Aucun tour sur cette fenêtre.`));
+
+  // Sans un seul tour, il n'y a rien a dessiner : deux cadres vides et une
+  // legende d'echelles se lisent comme un affichage casse, pas comme le calme.
+  if (!t.turns) { box.appendChild(card); return; }
 
   card.appendChild(el('div', 'eyebrow', 'Produits par le modèle, par heure'));
   const out = el('div', 'chart chart-out');
@@ -388,9 +395,14 @@ function renderConso() {
   card.appendChild(axis);
 
   const peak = Math.max(...rows.map(r => r.out), 0);
+  const cache = t.cache_read + t.cache_creation;
+  const totalIn = cache + t.in + t.out;
+  const share = totalIn ? Math.round((cache / totalIn) * 100) : 0;
   card.appendChild(el('p', 'sub',
     `Les deux dessins n'ont pas la même échelle : en haut le pic vaut ${tokens(peak)} produits en une heure, `
-    + `en bas le volume total, dominé par le cache.`));
+    + (share >= 50
+       ? `en bas le volume total, dont ${share} % de cache.`
+       : `en bas le volume total (le cache n'en fait que ${share} %).`)));
 
   const keys = el('div', 'keys');
   [['--tok-out', 'produits par le modèle'], ['--tok-in', 'envoyés neufs'],
