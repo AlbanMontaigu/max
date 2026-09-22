@@ -117,7 +117,8 @@ function windowTotal() {
 
 /* --- Dessin -------------------------------------------------------------- */
 
-const W = 1000, H = 120;
+const W = 1000, H = 220, OUT_H = 160;
+const Y_TICKS = 4;
 
 function svg(h) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -135,12 +136,35 @@ function rect(x, y, w, h, varname) {
   return r;
 }
 
-function stackedChart(rows) {
+function gridlines(s, height, count) {
+  // Sous les barres (ajoutees en premier, donc dessinees derriere) : des
+  // reperes de valeur, pas une decoration. Memes fractions que les libelles
+  // de yAxisLabels, sinon un repere et son libelle divergeraient.
+  for (let i = 0; i <= count; i++) {
+    const y = Math.round((height * i) / count);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', 0); line.setAttribute('x2', W);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'var(--grid)');
+    line.setAttribute('stroke-width', 1);
+    s.appendChild(line);
+  }
+}
+
+function yAxisLabels(max, count) {
+  const out = [];
+  for (let i = count; i >= 0; i--) {
+    out.push({ frac: (count - i) / count, label: tokens(Math.round((max * i) / count)) });
+  }
+  return out;
+}
+
+function stackedChart(rows, max) {
   /* Barres empilees, une par heure. Les heures sans tour EXISTENT et valent
      zero : une courbe qui saute les cases vides fait ressembler un trou a un
      calme, et ce ne sont pas les memes nouvelles. */
   const s = svg(H);
-  const max = Math.max(1, ...rows.map(r => r.in + r.cache_read + r.cache_creation + r.out));
+  gridlines(s, H, Y_TICKS);
   const bw = W / rows.length;
   rows.forEach((r, i) => {
     const x = i * bw + bw * 0.12;
@@ -156,12 +180,12 @@ function stackedChart(rows) {
   return s;
 }
 
-function barsOf(rows, key, color, height) {
+function barsOf(rows, key, color, height, max) {
   /* Une grandeur, sa propre echelle. Empiler « produits » sous le cache le
      reduisait a un lisere : le geste qui coute le plus cher devenait le moins
      visible du dessin. */
   const s = svg(height);
-  const max = Math.max(1, ...rows.map(r => r[key]));
+  gridlines(s, height, Y_TICKS);
   const bw = W / rows.length;
   rows.forEach((r, i) => {
     const h = (r[key] / max) * (height - 2);
@@ -272,6 +296,35 @@ function renderAxis(hours) {
     axis.appendChild(sp);
   });
   return axis;
+}
+
+function renderYAxis(max, height) {
+  // Hauteur figee au pixel pres (voir .chart-y en CSS) : la colonne de
+  // libelles n'est pas etiree par flex, donc ses fractions ne peuvent
+  // correspondre a celles des reperes dessines DANS le graphe que si les deux
+  // partagent exactement la meme hauteur.
+  const y = el('div', 'chart-y');
+  y.style.height = height + 'px';
+  yAxisLabels(max, Y_TICKS).forEach((t) => {
+    const sp = el('span', null, t.label);
+    sp.style.top = (t.frac * 100) + '%';
+    y.appendChild(sp);
+  });
+  return y;
+}
+
+function chartPanel(svgEl, max, height, hours, extraClass) {
+  // Un graphe complet : axe des valeurs a gauche, dessin + axe du temps a
+  // droite — le seul assemblage que renderConso a besoin de connaitre.
+  const wrap = el('div', 'chartwrap');
+  wrap.appendChild(renderYAxis(max, height));
+  const plot = el('div', 'chart-plot');
+  const chartDiv = el('div', 'chart' + (extraClass ? ' ' + extraClass : ''));
+  chartDiv.appendChild(svgEl);
+  plot.appendChild(chartDiv);
+  plot.appendChild(renderAxis(hours));
+  wrap.appendChild(plot);
+  return wrap;
 }
 
 /* --- Rendu --------------------------------------------------------------- */
@@ -533,18 +586,28 @@ function renderConso() {
   if (!t.turns) { box.appendChild(card); return; }
 
   const hours = hoursArr();
+  const maxOut = Math.max(1, ...rows.map(r => r.out));
+  const maxStack = Math.max(1, ...rows.map(r => r.in + r.cache_read + r.cache_creation + r.out));
 
-  card.appendChild(el('div', 'eyebrow', 'Produits par le modèle, par heure'));
-  const out = el('div', 'chart chart-out');
-  out.appendChild(tagChart(barsOf(rows, 'out', '--tok-out', 78), rows, hours, 'out'));
-  card.appendChild(out);
-  card.appendChild(renderAxis(hours));
+  // Deux colonnes au plus, jamais trois meme sur un grand ecran : au-dela,
+  // un graphe redevient trop etroit pour que ses barres se distinguent.
+  const grid = el('div', 'chartgrid');
 
-  card.appendChild(el('div', 'eyebrow', 'Volume total reçu, cache compris'));
-  const chart = el('div', 'chart');
-  chart.appendChild(tagChart(stackedChart(rows), rows, hours, 'stack'));
-  card.appendChild(chart);
-  card.appendChild(renderAxis(hours));
+  const outCard = el('div', 'chartcard');
+  outCard.appendChild(el('div', 'eyebrow', 'Produits par le modèle, par heure'));
+  outCard.appendChild(chartPanel(
+    tagChart(barsOf(rows, 'out', '--tok-out', OUT_H, maxOut), rows, hours, 'out'),
+    maxOut, OUT_H, hours, 'chart-out'));
+  grid.appendChild(outCard);
+
+  const stackCard = el('div', 'chartcard');
+  stackCard.appendChild(el('div', 'eyebrow', 'Volume total reçu, cache compris'));
+  stackCard.appendChild(chartPanel(
+    tagChart(stackedChart(rows, maxStack), rows, hours, 'stack'),
+    maxStack, H, hours));
+  grid.appendChild(stackCard);
+
+  card.appendChild(grid);
 
   const peak = Math.max(...rows.map(r => r.out), 0);
   const cache = t.cache_read + t.cache_creation;

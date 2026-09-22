@@ -188,7 +188,30 @@ body:not([data-tab="usage"]) #conso {
   background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
   padding: .7rem .85rem; margin-bottom: .75rem;
 }
-.chart svg { width: 100%; height: 120px; display: block; }
+/* Deux colonnes au plus, jamais trois : au-dela, la largeur restante par
+   graphe rend les barres a nouveau illisibles — exactement le defaut que la
+   hauteur plus grande ci-dessous corrige. En dessous de 720px, une seule
+   colonne pleine largeur (mobile d'abord). */
+.chartgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem .85rem; margin: .5rem 0 .75rem; }
+@media (min-width: 720px) { .chartgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.chartcard { min-width: 0; }
+
+/* Un graphe = un axe des valeurs a gauche (largeur fixe) + le dessin et
+   l'axe du temps a droite (le reste). align-items: flex-start, jamais
+   stretch : .chart-y a une hauteur figee en JS (voir renderYAxis), qui doit
+   rester celle du DESSIN seul, pas dessin+axe du temps — sinon ses reperes
+   glissent par rapport aux lignes de grille qu'ils legendent. */
+.chartwrap { display: flex; align-items: flex-start; gap: .4rem; }
+.chart-plot { flex: 1 1 auto; min-width: 0; }
+.chart-y { position: relative; flex: 0 0 auto; width: 2.9rem; }
+.chart-y span {
+  position: absolute; right: 0; transform: translateY(-50%);
+  font-size: .68rem; color: var(--ink-dim); white-space: nowrap;
+}
+.chart-y span:first-child { transform: translateY(0); }
+.chart-y span:last-child { transform: translateY(-100%); }
+
+.chart svg { width: 100%; height: 220px; display: block; }
 .chart svg rect, .spark svg rect { cursor: pointer; }
 .chart svg rect:hover, .spark svg rect:hover { opacity: .7; }
 
@@ -216,7 +239,7 @@ table.t th { font-weight: 660; color: var(--ink-dim); font-size: .74rem; text-tr
 /* Le dessin des tokens produits est plus bas que celui du volume : il porte
    une grandeur plus petite, lui donner la meme hauteur en ferait le sujet
    principal du bloc alors qu ils se lisent ensemble. */
-.chart.chart-out svg { height: 78px; }
+.chart.chart-out svg { height: 160px; }
 
 /* « Rien ne s est passe » se dit, mais ne se crie pas : c est un fait, pas
    une bonne nouvelle comme « aucune anomalie ». */
