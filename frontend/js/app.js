@@ -31,12 +31,15 @@ let VIEW = (location.hash.replace('#', '') === 'week') ? 'week' : 'day';
 // fenetre (#day/#week), partageable. localStorage leve en navigation privee
 // sur Safari — un onglet non memorise est un desagrement, pas une panne.
 const TAB_KEY = 'max.tab';
-const TABS = ['overview', 'variants', 'usage'];
+const TABS = ['usage', 'variants', 'overview'];
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* rien a faire */ } },
 };
-let TAB = TABS.includes(store.get(TAB_KEY)) ? store.get(TAB_KEY) : 'overview';
+// Consommation est ce qu'on vient voir en priorité : la santé de la flotte se
+// lit déjà dans le bandeau d'alertes et le pastille de fraîcheur, toujours
+// visibles quel que soit l'onglet.
+let TAB = TABS.includes(store.get(TAB_KEY)) ? store.get(TAB_KEY) : 'usage';
 
 /* --- Formatage ----------------------------------------------------------- */
 
