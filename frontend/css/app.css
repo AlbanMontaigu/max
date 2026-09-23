@@ -144,9 +144,11 @@ body:not([data-tab="usage"]) #conso {
 /* minmax(0,1fr) et pas 1fr : une piste de grille vaut min-width:auto par
    defaut, et les SVG (viewBox large) imposeraient leur largeur intrinseque a
    la carte, poussant la page en debordement horizontal sur telephone. */
+/* Deux colonnes au plus, jamais trois : meme plafond que .chartgrid, pour la
+   meme raison — une troisieme colonne ne laisse plus assez de place au
+   sparkline de chaque carte, qui devient illisible avant le texte. */
 .cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; margin-bottom: .75rem; }
 @media (min-width: 720px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .card {
   background: var(--card); border: 1px solid var(--edge); border-radius: 14px;

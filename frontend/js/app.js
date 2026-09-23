@@ -199,6 +199,16 @@ function sparkline(rows) {
      deux heures il ne se passe rien a interpoler. */
   const h = 34;
   const s = svg(h);
+  // Une variante peu active n'a qu'une ou deux barres non nulles : sans repere,
+  // elles flottent dans le blanc et se lisent comme un graphe casse plutot que
+  // comme « une heure active sur 24 ». La ligne de base dit ce que la largeur
+  // entiere represente, meme quand presque rien n'y est dessine.
+  const base = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  base.setAttribute('x1', 0); base.setAttribute('x2', W);
+  base.setAttribute('y1', h - 1); base.setAttribute('y2', h - 1);
+  base.setAttribute('stroke', 'var(--grid)');
+  base.setAttribute('stroke-width', 1);
+  s.appendChild(base);
   const max = Math.max(1, ...rows.map(r => r.turns));
   const bw = W / rows.length;
   rows.forEach((r, i) => {
