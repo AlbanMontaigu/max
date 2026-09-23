@@ -175,7 +175,6 @@ body:not([data-tab="usage"]) #conso {
   font-size: .68rem; font-weight: 660; color: var(--ink-dim);
   text-transform: uppercase; letter-spacing: .03em; margin: .55rem 0 .15rem;
 }
-.spark svg { width: 100%; height: 34px; display: block; }
 .anoms { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
 .anom {
   font-size: .76rem; padding: .1rem .5rem; border-radius: 999px;
@@ -214,8 +213,8 @@ body:not([data-tab="usage"]) #conso {
 .chart-y span:last-child { transform: translateY(-100%); }
 
 .chart svg { width: 100%; height: 220px; display: block; }
-.chart svg rect, .spark svg rect { cursor: pointer; }
-.chart svg rect:hover, .spark svg rect:hover { opacity: .7; }
+.chart svg rect { cursor: pointer; }
+.chart svg rect:hover { opacity: .7; }
 
 /* Reperes positionnes en fraction de largeur (voir renderAxis dans le JS),
    pas en space-between : chaque libelle doit tomber sous l'heure qu'il
@@ -242,6 +241,11 @@ table.t th { font-weight: 660; color: var(--ink-dim); font-size: .74rem; text-tr
    une grandeur plus petite, lui donner la meme hauteur en ferait le sujet
    principal du bloc alors qu ils se lisent ensemble. */
 .chart.chart-out svg { height: 160px; }
+
+/* Le sparkline par variante reste plus bas que les deux grands graphes : une
+   carte en porte plusieurs sections avant et apres lui, pas seulement ce
+   dessin. */
+.chart.chart-spark svg { height: 130px; }
 
 /* « Rien ne s est passe » se dit, mais ne se crie pas : c est un fait, pas
    une bonne nouvelle comme « aucune anomalie ». */

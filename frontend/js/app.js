@@ -117,8 +117,8 @@ function windowTotal() {
 
 /* --- Dessin -------------------------------------------------------------- */
 
-const W = 1000, H = 220, OUT_H = 160;
-const Y_TICKS = 4;
+const W = 1000, H = 220, OUT_H = 160, SPARK_H = 130;
+const Y_TICKS = 4, SPARK_Y_TICKS = 2, SPARK_X_TICKS = 4;
 
 function svg(h) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -194,26 +194,18 @@ function barsOf(rows, key, color, height, max) {
   return s;
 }
 
-function sparkline(rows) {
+function sparkline(rows, max) {
   /* Tours par heure d'une variante. Un histogramme et pas une courbe : entre
-     deux heures il ne se passe rien a interpoler. */
-  const h = 34;
-  const s = svg(h);
-  // Une variante peu active n'a qu'une ou deux barres non nulles : sans repere,
-  // elles flottent dans le blanc et se lisent comme un graphe casse plutot que
-  // comme « une heure active sur 24 ». La ligne de base dit ce que la largeur
-  // entiere represente, meme quand presque rien n'y est dessine.
-  const base = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  base.setAttribute('x1', 0); base.setAttribute('x2', W);
-  base.setAttribute('y1', h - 1); base.setAttribute('y2', h - 1);
-  base.setAttribute('stroke', 'var(--grid)');
-  base.setAttribute('stroke-width', 1);
-  s.appendChild(base);
-  const max = Math.max(1, ...rows.map(r => r.turns));
+     deux heures il ne se passe rien a interpoler. Mêmes lignes de grille que
+     les deux grands graphes — une variante peu active n'a qu'une ou deux
+     barres non nulles, et sans repere elles flottent dans le blanc comme un
+     graphe casse plutot que comme « une heure active sur 24 ». */
+  const s = svg(SPARK_H);
+  gridlines(s, SPARK_H, SPARK_Y_TICKS);
   const bw = W / rows.length;
   rows.forEach((r, i) => {
-    const bh = (r.turns / max) * (h - 2);
-    if (bh > 0) s.appendChild(rect(i * bw + bw * 0.15, h - bh, bw * 0.7, bh, '--cool'));
+    const bh = (r.turns / max) * (SPARK_H - 2);
+    if (bh > 0) s.appendChild(rect(i * bw + bw * 0.15, SPARK_H - bh, bw * 0.7, bh, '--cool'));
   });
   return s;
 }
@@ -280,27 +272,27 @@ function bindChartTip() {
   document.addEventListener('pointerleave', hideTip);
 }
 
-function axisTicks(hours) {
-  /* 6 reperes repartis a intervalle EGAL entre le premier et le dernier
-     index (pas un pas fixe + une queue rajoutee) : un pas fixe laisse un
-     dernier repere trop proche de l'avant-dernier des que n-1 n'est pas un
-     multiple du pas, et les deux libelles se chevauchent. */
+function axisTicks(hours, count) {
+  /* `count` reperes repartis a intervalle EGAL entre le premier et le
+     dernier index (pas un pas fixe + une queue rajoutee) : un pas fixe
+     laisse un dernier repere trop proche de l'avant-dernier des que n-1
+     n'est pas un multiple du pas, et les deux libelles se chevauchent. */
   const n = hours.length;
   if (!n) return [];
-  const count = Math.min(n, 6);
-  const idx = [...new Set(Array.from({ length: count },
-    (_, i) => count > 1 ? Math.round(i * (n - 1) / (count - 1)) : 0))];
+  const c = Math.min(n, count);
+  const idx = [...new Set(Array.from({ length: c },
+    (_, i) => c > 1 ? Math.round(i * (n - 1) / (c - 1)) : 0))];
   const fmt = (iso) => new Date(iso).toLocaleString('fr-FR',
     VIEW === 'day' ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', hour: '2-digit' });
   return idx.map(i => ({ frac: n > 1 ? i / (n - 1) : 0, label: fmt(hours[i]) }));
 }
 
-function renderAxis(hours) {
+function renderAxis(hours, count) {
   // Positionnee en fraction de largeur, pas en space-between : chaque repere
   // tombe exactement sous l'heure qu'il nomme, pas a une position moyenne qui
   // gliserait des qu'un des deux graphes a un nombre de barres different.
   const axis = el('div', 'axis');
-  axisTicks(hours).forEach((t) => {
+  axisTicks(hours, count).forEach((t) => {
     const sp = el('span', null, t.label);
     sp.style.left = (t.frac * 100) + '%';
     axis.appendChild(sp);
@@ -308,14 +300,14 @@ function renderAxis(hours) {
   return axis;
 }
 
-function renderYAxis(max, height) {
+function renderYAxis(max, height, count) {
   // Hauteur figee au pixel pres (voir .chart-y en CSS) : la colonne de
   // libelles n'est pas etiree par flex, donc ses fractions ne peuvent
   // correspondre a celles des reperes dessines DANS le graphe que si les deux
   // partagent exactement la meme hauteur.
   const y = el('div', 'chart-y');
   y.style.height = height + 'px';
-  yAxisLabels(max, Y_TICKS).forEach((t) => {
+  yAxisLabels(max, count).forEach((t) => {
     const sp = el('span', null, t.label);
     sp.style.top = (t.frac * 100) + '%';
     y.appendChild(sp);
@@ -323,16 +315,16 @@ function renderYAxis(max, height) {
   return y;
 }
 
-function chartPanel(svgEl, max, height, hours, extraClass) {
+function chartPanel(svgEl, max, height, hours, extraClass, yTicks, xTicks) {
   // Un graphe complet : axe des valeurs a gauche, dessin + axe du temps a
-  // droite — le seul assemblage que renderConso a besoin de connaitre.
+  // droite — le seul assemblage qu'un appelant a besoin de connaitre.
   const wrap = el('div', 'chartwrap');
-  wrap.appendChild(renderYAxis(max, height));
+  wrap.appendChild(renderYAxis(max, height, yTicks || Y_TICKS));
   const plot = el('div', 'chart-plot');
   const chartDiv = el('div', 'chart' + (extraClass ? ' ' + extraClass : ''));
   chartDiv.appendChild(svgEl);
   plot.appendChild(chartDiv);
-  plot.appendChild(renderAxis(hours));
+  plot.appendChild(renderAxis(hours, xTicks || 6));
   wrap.appendChild(plot);
   return wrap;
 }
@@ -495,9 +487,11 @@ function variantCard(v) {
       card.appendChild(box);
     }
     if (t.turns > 0) {
-      const sp = el('div', 'spark');
-      sp.appendChild(tagChart(sparkline(rows), rows, hoursArr(), 'spark'));
-      card.appendChild(sp);
+      const hours = hoursArr();
+      const maxTurns = Math.max(1, ...rows.map(r => r.turns));
+      card.appendChild(chartPanel(
+        tagChart(sparkline(rows, maxTurns), rows, hours, 'spark'),
+        maxTurns, SPARK_H, hours, 'chart-spark', SPARK_Y_TICKS, SPARK_X_TICKS));
     } else {
       card.appendChild(el('p', 'quiet-dim', 'Aucun tour sur la fenêtre affichée.'));
     }
