@@ -28,6 +28,12 @@
   --tok-in: #1668c9;      /* envoyes neufs */
   --tok-cache: #0d7f78;   /* relus depuis le cache — l'essentiel du volume */
   --grid: #e9eef5;
+
+  /* Profondeur commune a toutes les surfaces "carte" : une ombre large et
+     douce plutot qu'une bordure plus foncee, pour que la page ait du relief
+     sans jouer sur une deuxieme palette. */
+  --shadow-card: 0 1px 2px rgba(22, 32, 46, .05), 0 10px 28px -16px rgba(22, 32, 46, .22);
+  --shadow-card-hover: 0 2px 4px rgba(22, 32, 46, .06), 0 16px 36px -16px rgba(22, 32, 46, .28);
 }
 * { box-sizing: border-box; }
 body {
@@ -42,17 +48,24 @@ body {
 /* En-tete collant : « comment vont les gateways » doit se lire ici, pas au
    terme d'un parcours des six cartes. */
 .topwrap {
-  margin: 0 -.75rem .75rem;
+  margin: 0 -.75rem .85rem;
   position: sticky; top: 0; z-index: 5;
-  box-shadow: 0 1px 3px rgba(22, 32, 46, .07);
+  box-shadow: 0 8px 20px -12px rgba(22, 32, 46, .25);
 }
 .top {
   display: flex; align-items: center; justify-content: space-between;
   gap: .75rem 1rem; flex-wrap: wrap;
-  padding: .85rem 1rem;
-  background: linear-gradient(180deg, #e8f0fb, #f4f8fd);
+  padding: .95rem 1rem;
+  background: linear-gradient(135deg, #dfeafb, #f4f8fd 70%);
 }
-.top-id { min-width: 0; }
+.top-id { min-width: 0; display: flex; align-items: center; gap: .55rem; }
+.top-id-text { min-width: 0; }
+/* Meme pictogramme que la favicon : une identite visuelle, pas une donnee de
+   variante — le nom "Gateway" reste generique, rien qui vienne du payload. */
+.brand-ico {
+  font-size: 1.3rem; line-height: 1; flex: 0 0 auto;
+  filter: drop-shadow(0 1px 1px rgba(22, 32, 46, .15));
+}
 .top h1 { margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
 .synth { margin: .15rem 0 0; font-size: .88rem; color: var(--ink-dim); }
 .synth b { color: var(--ink); font-weight: 620; }
@@ -70,6 +83,7 @@ body {
 .seg button {
   font: inherit; font-size: .78rem; padding: .25rem .7rem; border: 0;
   background: transparent; color: var(--ink-dim); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
 }
 .seg button[aria-pressed="true"] { background: var(--cool); color: #fff; font-weight: 600; }
 
@@ -88,11 +102,15 @@ body {
   appearance: none; border: 0; background: transparent; color: #3a5578;
   font: inherit; font-size: .84rem; font-weight: 560; padding: .5rem .75rem;
   cursor: pointer; white-space: nowrap; border-radius: 8px;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
 .tabs button[aria-selected="true"] {
   color: var(--ink); font-weight: 660;
   background: var(--card);
   box-shadow: 0 1px 2px rgba(22, 32, 46, .12);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tabs button[aria-selected="false"]:hover { background: rgba(255, 255, 255, .55); color: var(--ink); }
 }
 
 /* Chaque section n'appartient qu'à un onglet. #banners reste visible partout :
@@ -113,31 +131,66 @@ body:not([data-tab="usage"]) #conso {
 /* --- Forfait ------------------------------------------------------------- */
 
 .plan {
-  background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
-  padding: .7rem .85rem; margin-bottom: .75rem;
+  background: var(--card); border: 1px solid var(--edge); border-radius: 16px;
+  padding: .9rem 1rem; margin-bottom: .75rem;
+  box-shadow: var(--shadow-card);
 }
 .plan h2, .conso h2 { margin: 0 0 .35rem; font-size: .88rem; font-weight: 660; }
 .plan .sub { font-size: .8rem; color: var(--ink-dim); margin: 0 0 .5rem; }
-.gauge { height: 12px; border-radius: 999px; background: var(--card-2); overflow: hidden; }
-.gauge > i { display: block; height: 100%; background: var(--cool); }
-.gauge.hot > i { background: var(--warn); }
-.gauge.full > i { background: var(--alert); }
-.plan .legend { display: flex; justify-content: space-between; font-size: .76rem; color: var(--ink-dim); margin-top: .3rem; }
+
+/* --- Jauge circulaire du forfait -------------------------------------------
+
+   Remplace l'ancienne barre lineaire : meme donnee (un pourcentage), un
+   dessin qui porte mieux le regard sur la carte la plus regardee de la page.
+   Le pourcentage reste aussi dans la phrase au-dessus (.plan .sub) — c'est le
+   MEME nombre affiche deux fois sous deux formes, pas un second calcul qui
+   pourrait diverger (voir la regle du CLAUDE.md sur les totaux). */
+.plan-body { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: .3rem; }
+.ring { position: relative; width: 118px; height: 118px; flex: 0 0 auto; }
+.ring svg { width: 100%; height: 100%; display: block; }
+.ring circle { fill: none; stroke-width: 11; }
+.ring .ring-track { stroke: var(--card-2); }
+.ring .ring-bar {
+  stroke: var(--cool); stroke-linecap: round;
+  transform-origin: center; transform: rotate(-90deg);
+  transition: stroke-dashoffset .6s ease, stroke .3s ease;
+}
+.ring.hot .ring-bar { stroke: var(--warn); }
+.ring.full .ring-bar { stroke: var(--alert); }
+.ring-label {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; gap: .1rem;
+}
+.ring-label b { font-size: 1.4rem; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+.ring-label span { font-size: .66rem; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .04em; }
+.plan-info { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: .3rem; }
+.plan-info .kv { font-size: .84rem; }
+.plan-info .kv b { font-weight: 660; }
 
 /* --- Bandeau d'aperçu ------------------------------------------------------ */
 
 /* Un chip par variante, pas une carte : l'onglet Aperçu doit se lire d'un
    regard, le détail (file, conso, anomalies…) vit dans l'onglet Variantes. */
-.strip { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+/* Grille plutot que flex : sur un ecran large, les puces s'alignent en
+   colonnes nettes au lieu de flotter en paquet compact a gauche — ca donne a
+   l'onglet Sante une premiere impression de tableau de bord, pas d'une ligne
+   de tags. minmax(180px,1fr) retombe a une seule colonne des que la largeur
+   disponible ne tient plus 180px, donc jamais de debordement mobile. */
+.strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .55rem; margin-bottom: .75rem; }
 .chip {
   appearance: none; font: inherit; cursor: pointer; text-align: left;
-  display: flex; align-items: center; gap: .4rem;
+  display: flex; align-items: center; gap: .5rem;
   background: var(--card); border: 1px solid var(--edge); border-radius: 999px;
-  padding: .35rem .75rem .35rem .55rem; font-size: .82rem; color: var(--ink);
+  padding: .45rem .85rem .45rem .6rem; font-size: .82rem; color: var(--ink);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow .15s ease, transform .15s ease;
 }
 .chip.down { border-color: #f3c4bd; background: #fffaf9; }
 .chip b { font-weight: 620; }
 .chip span { color: var(--ink-dim); }
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-1px); }
+}
 
 /* --- Cartes de variante --------------------------------------------------- */
 
@@ -151,15 +204,35 @@ body:not([data-tab="usage"]) #conso {
 @media (min-width: 720px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .card {
-  background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
-  padding: .7rem .85rem; min-width: 0;
+  background: var(--card); border: 1px solid var(--edge); border-radius: 16px;
+  padding: .85rem 1rem; min-width: 0;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow .15s ease, transform .15s ease;
 }
 .card.down { border-color: #f3c4bd; background: #fffaf9; }
 .card.foreign { background: #fbfaff; }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-1px); }
+}
 .chead { display: flex; align-items: baseline; gap: .5rem; }
 .chead h3 { margin: 0; font-size: 1rem; font-weight: 660; }
-.dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--ok); flex: 0 0 auto; align-self: center; }
-.dot.down { background: var(--alert); }
+.dot {
+  width: .6rem; height: .6rem; border-radius: 50%; background: var(--ok);
+  flex: 0 0 auto; align-self: center;
+  box-shadow: 0 0 0 0 rgba(22, 121, 74, .35);
+  animation: dot-pulse 2.6s ease-in-out infinite;
+}
+.dot.down { background: var(--alert); box-shadow: none; animation: none; }
+/* Le pouls dit "vivante", pas "en train de changer" : seule une variante up
+   respire. Une variante down doit alarmer par sa couleur, jamais par un
+   mouvement qui suggererait encore de l'activite. */
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 121, 74, .35); }
+  50% { box-shadow: 0 0 0 5px rgba(22, 121, 74, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot { animation: none; }
+}
 .crole { margin: .2rem 0 .5rem; font-size: .8rem; color: var(--ink-dim); }
 .tag {
   font-size: .68rem; font-weight: 660; text-transform: uppercase; letter-spacing: .03em;
@@ -186,8 +259,9 @@ body:not([data-tab="usage"]) #conso {
 /* --- Conso ---------------------------------------------------------------- */
 
 .conso {
-  background: var(--card); border: 1px solid var(--edge); border-radius: 14px;
-  padding: .7rem .85rem; margin-bottom: .75rem;
+  background: var(--card); border: 1px solid var(--edge); border-radius: 16px;
+  padding: .9rem 1rem; margin-bottom: .75rem;
+  box-shadow: var(--shadow-card);
 }
 /* Deux colonnes au plus, jamais trois : au-dela, la largeur restante par
    graphe rend les barres a nouveau illisibles — exactement le defaut que la
@@ -213,8 +287,12 @@ body:not([data-tab="usage"]) #conso {
 .chart-y span:last-child { transform: translateY(-100%); }
 
 .chart svg { width: 100%; height: 220px; display: block; }
-.chart svg rect { cursor: pointer; }
-.chart svg rect:hover { opacity: .7; }
+/* Coins arrondis sur toutes les barres : un geste purement cosmetique (la
+   geometrie des barres reste calculee en JS), qui adoucit des dessins
+   autrement tres anguleux. rx en CSS plutot qu'en attribut SVG pour rester
+   fidele a la regle du fichier : toute la mise en forme vit ici. */
+.chart svg rect { cursor: pointer; rx: 2px; transition: opacity .1s ease; }
+.chart svg rect:hover { opacity: .75; }
 
 /* Reperes positionnes en fraction de largeur (voir renderAxis dans le JS),
    pas en space-between : chaque libelle doit tomber sous l'heure qu'il

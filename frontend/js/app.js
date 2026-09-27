@@ -213,6 +213,38 @@ function sparkline(rows, max) {
   return s;
 }
 
+const RING_SIZE = 118, RING_STROKE = 11;
+const RING_R = (RING_SIZE - RING_STROKE) / 2;
+const RING_C = 2 * Math.PI * RING_R;
+
+function ringGauge(pct) {
+  /* Jauge circulaire du forfait — un cercle de fond (la piste) et un cercle
+     dessine par-dessus dont on raccourcit le trait (stroke-dasharray/-offset)
+     a la fraction consommee. Purement decoratif : la seule donnee est `pct`,
+     deja calculee dans renderPlan, jamais recalculee ici. */
+  const clamped = Math.max(0, Math.min(100, pct));
+  const wrap = el('div', 'ring' + (pct >= 90 ? ' full' : pct >= 70 ? ' hot' : ''));
+  const s = svg(RING_SIZE);
+  s.setAttribute('viewBox', `0 0 ${RING_SIZE} ${RING_SIZE}`);
+  const mk = (cls) => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', RING_SIZE / 2); c.setAttribute('cy', RING_SIZE / 2); c.setAttribute('r', RING_R);
+    c.setAttribute('class', cls);
+    return c;
+  };
+  s.appendChild(mk('ring-track'));
+  const bar = mk('ring-bar');
+  bar.setAttribute('stroke-dasharray', RING_C.toFixed(1));
+  bar.setAttribute('stroke-dashoffset', (RING_C * (1 - clamped / 100)).toFixed(1));
+  s.appendChild(bar);
+  wrap.appendChild(s);
+  const label = el('div', 'ring-label');
+  label.appendChild(el('b', null, pct + ' %'));
+  label.appendChild(el('span', null, 'consommé'));
+  wrap.appendChild(label);
+  return wrap;
+}
+
 /* --- Interactivite --------------------------------------------------------
 
    Chaque dessin porte ses propres lignes (rows) et l'heure de chacune
@@ -414,15 +446,19 @@ function renderPlan() {
       ? `Fenêtre ${win || 'en cours'} · la dernière réponse n'a pas dit où en est la consommation.`
       : `Fenêtre ${win || 'en cours'} · ${pct} % consommés, remise à zéro à ${clock(p.resets_at)}.`));
   if (pct !== null) {
-    const g = el('div', 'gauge' + (pct >= 90 ? ' full' : pct >= 70 ? ' hot' : ''));
-    const i = el('i');
-    i.style.width = Math.min(100, pct) + '%';
-    g.appendChild(i);
-    card.appendChild(g);
-    const legend = el('div', 'legend');
-    legend.appendChild(el('span', null, `${pct} %`));
-    legend.appendChild(el('span', null, `rouvre à ${clock(p.resets_at)}`));
-    card.appendChild(legend);
+    const body = el('div', 'plan-body');
+    body.appendChild(ringGauge(pct));
+    const info = el('div', 'plan-info');
+    const row = (label, value) => {
+      const d = el('div', 'kv');
+      d.appendChild(el('b', null, value));
+      d.appendChild(document.createTextNode(' '));
+      d.appendChild(el('span', null, label));
+      info.appendChild(d);
+    };
+    row('rouverture de la fenêtre', clock(p.resets_at));
+    body.appendChild(info);
+    card.appendChild(body);
   }
   card.appendChild(el('p', 'sub',
     `Lu sur « ${(DATA.variants.find(v => v.id === p.source) || {}).label || p.source} », `
